@@ -7177,6 +7177,173 @@ const definitions: Definition[] = [
             tuya.whitelabel('AVATTO', 'ZWSM16-4-Zigbee', '4 gang switch module', ['_TZ3000_5ajpkyq6']),
         ],
     },
+    {
+        fingerprint: tuya.fingerprint('TS0601', ['_TZE200_mhswlizg']),
+        whiteLabel: [
+            { model: 'HY01BW', vendor: 'Hysen' },
+            { model: 'LL0211Z', vendor: 'LEDLUX' },
+        ],
+        model: 'LL0211Z',
+        vendor: 'LEDLUX',
+        description: 'Wall-mount thermostat',
+        fromZigbee: [tuya.fz.datapoints],
+        toZigbee: [
+            {
+                key: [
+                    ...tuya.tz.datapoints.key,
+                    'running_mode', // works
+                    'min_temperature_limit', // works
+                    'frost_protection_hysteresis', // works
+                    'programming_operation_mode',
+                    'week',
+                    'away_preset_days',
+                    'away_preset_temperature'
+                ],
+                convertSet: tuya.tz.datapoints.convertSet
+                // TODO convertGet?
+            },
+        ],
+        // Says you need to use this if you're getting no converter for commandMcuSyncTime,
+        // but I'm still getting it.
+        onEvent: tuya.onEventSetTime,
+        configure: tuya.configureMagicPacket,
+        exposes: [
+            e.climate()
+                .withLocalTemperature(ea.STATE)
+                .withSetpoint('current_heating_setpoint', 5, 35, 0.5, ea.STATE_SET)
+                .withLocalTemperatureCalibration(-9, 9, 1, ea.STATE_SET)
+                .withRunningState(['idle', 'heat'], ea.STATE)
+                .withRunningMode(['off', 'heat'], ea.STATE_SET),
+            e.numeric('hysteresis', ea.STATE_SET)
+                .withUnit('°C')
+                .withValueMin(0.5)
+                .withValueMax(2.5)
+                .withValueStep(0.5)
+                .withDescription('Hysteresis setting.'),
+            e.max_temperature()
+                .withValueMin(20)
+                .withValueMax(70),
+            e.min_temperature()
+                .withValueMin(1)
+                .withValueMax(20),
+            e.enum('programming_operation_mode', ea.STATE_SET, ['manual', 'schedule', 'away', 'temporary_manual'])
+                .withDescription('Controls how programing affects the thermostat. Possible values: setpoint (only use specified setpoint), schedule (follow programmed setpoint schedule), away (only use specified away setpoint), temporary_manual (use specified setpoint until the local temperature reaches the setpoint, then switch back to schedule mode). Changing this value does not clear programmed schedules.'),
+            e.away_preset_days(),
+            e.away_preset_temperature(),
+            e.enum('week', ea.STATE_SET, ['5+2', '6+1', '7'])
+                .withDescription('Week format used for schedule.'),
+            e.min_temperature_limit()
+                .withValueMin(1)
+                .withValueMax(10)
+                .withDescription('Frost protection temperature. Turns the thermostat on regardless of setpoint if the temperature drops below this limit.'),
+            e.binary('frost_protection', ea.STATE_SET, 'ON', 'OFF')
+                .withDescription('Enables/disables frost protection.'),
+            e.numeric('frost_protection_hysteresis', ea.STATE_SET)
+                .withUnit('°C')
+                .withValueMin(0.5)
+                .withValueMax(2.5)
+                .withValueStep(0.5)
+                .withDescription('Hysteresis setting for frost protection.'),
+            e.enum('power_on_behavior', ea.STATE_SET, ['on', 'off', 'previous'])
+                .withDescription('Controls the behavior when the device is powered on after power loss.'),
+            e.child_lock(),
+        ],
+        meta: {
+            tuyaDatapoints: [
+                // SET: no
+                // GET: ?
+                // EXPOSE: yes
+                [102, 'running_state', tuya.valueConverterBasic.lookup({'idle': false, 'heat': true})],
+                // SET: no
+                // GET: ?
+                // EXPOSE: no
+                [103, 'external_temperature', tuya.valueConverter.divideBy10],
+                // SET: ?
+                // GET: ?
+                // EXPOSE: yes
+                [104, 'away_preset_days', tuya.valueConverter.raw],
+                // SET: ?
+                // GET: ?
+                // EXPOSE: yes
+                [105, 'away_preset_temperature', tuya.valueConverter.raw],
+                // SET: ?
+                // GET: ?
+                // EXPOSE: no
+                [106, 'frost_protection_max', tuya.valueConverter.onOff],
+                // SET: works
+                // GET: ?
+                // EXPOSE: yes
+                [107, 'frost_protection', tuya.valueConverter.onOff],
+                ///// 108: unknown
+                // SET: works
+                // GET: ?
+                // EXPOSE: yes
+                [109, 'local_temperature_calibration', tuya.valueConverter.localTemperatureCalibration],
+                // SET: works
+                // GET: ?
+                // EXPOSE: yes
+                [110, 'hysteresis', tuya.valueConverter.divideBy10],
+                // SET: works
+                // GET: ?
+                // EXPOSE: yes
+                [111, 'frost_protection_hysteresis', tuya.valueConverter.divideBy10],
+                // SET: ?
+                // GET: ?
+                // EXPOSE: yes
+                [112, 'max_temperature_limit', tuya.valueConverter.raw],
+                // SET: works
+                // GET: ?
+                // EXPOSE: yes
+                [113, 'min_temperature_limit', tuya.valueConverter.raw],
+                // SET: works
+                // GET: ?
+                // EXPOSE: yes
+                [114, 'max_temperature', tuya.valueConverter.raw],
+                // SET: works
+                // GET: ?
+                // EXPOSE: yes
+                [115, 'min_temperature', tuya.valueConverter.raw],
+                // SET: ?
+                // GET: ?
+                // EXPOSE: no
+                [116, 'sensor_type', tuya.valueConverterBasic.lookup({'internal': 0, 'external': 1, 'both':2})],
+                // SET: doesn't work
+                // GET: ?
+                // EXPOSE: yes
+                [117, 'power_on_behavior', tuya.valueConverterBasic.lookup({'previous': 0, 'off': 1, 'on': 2})],
+                // SET: doesn't work
+                // GET: ?
+                // EXPOSE: yes
+                [118, 'week', tuya.valueConverterBasic.lookup({'5+2': 0, '6+1': 1, '7': 2})],
+                ///// 119, 120, 121, 122: sent when min/max/limit temperature change. supposedly workday/holiday schedule.
+                ///// 123-124: unknown
+                // SET: works
+                // GET: ?
+                // EXPOSE: yes
+                [125, 'running_mode', tuya.valueConverterBasic.lookup({'off': false, 'heat': true})],
+                // SET: works
+                // GET: ?
+                // EXPOSE: yes
+                [126, 'current_heating_setpoint', tuya.valueConverter.divideBy10],
+                // SET: works
+                // GET: ?
+                // EXPOSE: yes
+                [127, 'local_temperature', tuya.valueConverter.divideBy10],
+                // SET: doesn't work
+                // GET: ?
+                // EXPOSE: yes
+                [128, 'programming_operation_mode', tuya.valueConverterBasic.lookup({'manual': 0, 'schedule': 1, 'away': 2, 'temporary_manual': 3})],
+                // SET: works
+                // GET: ?
+                // EXPOSE: yes
+                [129, 'child_lock', tuya.valueConverter.lockUnlock],
+                // SET: ?
+                // GET: ?
+                // EXPOSE: no
+                [130, 'alarm', tuya.valueConverter.raw],
+            ],
+        },
+    },
 ];
 
 export default definitions;
